@@ -53,6 +53,8 @@ func (r *CallSiteResolver) visitCallSite(callSite CallSite, ctx resolverContext)
 
 func (r *CallSiteResolver) visitCallSiteMain(callSite CallSite, ctx resolverContext) (any, error) {
 	switch callSite.Kind() {
+	case CallSiteKind_Factory:
+		return r.visitFactory(callSite.(*FactoryCallSite), ctx)
 	case CallSiteKind_Slice:
 		return r.visitSlice(callSite.(*SliceCallSite), ctx)
 	case CallSiteKind_Constructor:
@@ -82,6 +84,10 @@ func (r *CallSiteResolver) visitDisposeCache(transientCallSite CallSite, ctx res
 	}
 
 	return v, nil
+}
+
+func (r *CallSiteResolver) visitFactory(callSite *FactoryCallSite, ctx resolverContext) (any, error) {
+	return callSite.Factory(ctx.Scope), nil
 }
 
 func (r *CallSiteResolver) visitConstructor(callSite *ConstructorCallSite, ctx resolverContext) (any, error) {

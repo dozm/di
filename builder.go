@@ -131,3 +131,30 @@ func AddSingleton[T any](cb ContainerBuilder, ctor any) {
 func AddInstance[T any](cb ContainerBuilder, instance any) {
 	cb.Add(Instance[T](instance))
 }
+
+// New a transient factory descriptor
+func TransientFactory[T any](factory Factory) *Descriptor {
+	return NewFactoryDescriptor(reflectx.TypeOf[T](), Lifetime_Transient, factory)
+}
+
+// New a scoped factory descriptor
+func ScopedFactory[T any](factory Factory) *Descriptor {
+	return NewFactoryDescriptor(reflectx.TypeOf[T](), Lifetime_Scoped, factory)
+}
+
+// New a singleton factory descriptor
+func SingletonFactory[T any](factory Factory) *Descriptor {
+	return NewFactoryDescriptor(reflectx.TypeOf[T](), Lifetime_Singleton, factory)
+}
+
+func AddTransientFactory[T any](cb ContainerBuilder, factory Factory) {
+	cb.Add(TransientFactory[T](factory))
+}
+
+func AddScopedFactory[T any](cb ContainerBuilder, factory Factory) {
+	cb.Add(ScopedFactory[T](factory))
+}
+
+func AddSingletonFactory[T any](cb ContainerBuilder, factory Factory) {
+	cb.Add(SingletonFactory[T](factory))
+}

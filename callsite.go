@@ -14,7 +14,8 @@ import (
 type CallSiteKind byte
 
 const (
-	CallSiteKind_Constructor CallSiteKind = iota
+	CallSiteKind_Factory CallSiteKind = iota
+	CallSiteKind_Constructor
 	CallSiteKind_Constant
 	CallSiteKind_Slice
 	CallSiteKind_Container
@@ -65,6 +66,42 @@ func newConstantCallSite(serviceType reflect.Type, defaultValue any) *ConstantCa
 	return &ConstantCallSite{
 		serviceType: serviceType,
 		value:       defaultValue,
+	}
+}
+
+//Factory call site
+type FactoryCallSite struct {
+	serviceType reflect.Type
+	value       any
+	cache       ResultCache
+	Factory     Factory
+}
+
+func (cs *FactoryCallSite) Value() any {
+	return cs.value
+}
+
+func (cs *FactoryCallSite) SetValue(v any) {
+	cs.value = v
+}
+
+func (cs *FactoryCallSite) ServiceType() reflect.Type {
+	return cs.serviceType
+}
+
+func (cs *FactoryCallSite) Kind() CallSiteKind {
+	return CallSiteKind_Factory
+}
+
+func (cs *FactoryCallSite) Cache() ResultCache {
+	return cs.cache
+}
+
+func newFactoryCallSite(cache ResultCache, serviceType reflect.Type, factory Factory) *FactoryCallSite {
+	return &FactoryCallSite{
+		serviceType: serviceType,
+		cache:       cache,
+		Factory:     factory,
 	}
 }
 
@@ -291,8 +328,10 @@ func (f *CallSiteFactory) tryCreateExact(descriptor *Descriptor, chain *callSite
 	var err error
 	if descriptor.Instance != nil {
 		callSite = newConstantCallSite(descriptor.ServiceType, descriptor.Instance)
+	} else if descriptor.Factory != nil {
+		callSite = newFactoryCallSite(cache, descriptor.ServiceType, descriptor.Factory)
 	} else if descriptor.Ctor != nil {
-		callSite, err = f.createConstructorCallsite(cache, descriptor.ServiceType, descriptor.Ctor, chain)
+		callSite, err = f.createConstructorCallSite(cache, descriptor.ServiceType, descriptor.Ctor, chain)
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +343,7 @@ func (f *CallSiteFactory) tryCreateExact(descriptor *Descriptor, chain *callSite
 	return callSite, nil
 }
 
-func (f *CallSiteFactory) createConstructorCallsite(cache ResultCache, serviceType reflect.Type, ctor *ConstructorInfo, chain *callSiteChain) (*ConstructorCallSite, error) {
+func (f *CallSiteFactory) createConstructorCallSite(cache ResultCache, serviceType reflect.Type, ctor *ConstructorInfo, chain *callSiteChain) (*ConstructorCallSite, error) {
 	chain.Add(serviceType, ctor)
 	defer chain.Remove(serviceType)
 
