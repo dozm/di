@@ -65,14 +65,12 @@ func (r *CallSiteValidator) visitCallSite(callSite CallSite, state validatorStat
 
 func (r *CallSiteValidator) visitCallSiteMain(callSite CallSite, state validatorState) (reflect.Type, error) {
 	switch callSite.Kind() {
+	case CallSiteKind_Factory, CallSiteKind_Constant, CallSiteKind_Container:
+		return nil, nil
 	case CallSiteKind_Slice:
 		return r.visitSlice(callSite.(*SliceCallSite), state)
 	case CallSiteKind_Constructor:
 		return r.visitConstructor(callSite.(*ConstructorCallSite), state)
-	case CallSiteKind_Constant:
-		return r.visitConstant(callSite.(*ConstantCallSite), state)
-	case CallSiteKind_Container:
-		return r.visitContainer(callSite.(*ContainerCallSite), state)
 	default:
 		return nil, errors.New("unknow call site kind")
 	}
@@ -136,14 +134,6 @@ func (v *CallSiteValidator) visitDisposeCache(callSite CallSite, state validator
 
 func (v *CallSiteValidator) visitNoCache(callSite CallSite, state validatorState) (reflect.Type, error) {
 	return v.visitCallSiteMain(callSite, state)
-}
-
-func (v *CallSiteValidator) visitConstant(callSite *ConstantCallSite, state validatorState) (reflect.Type, error) {
-	return nil, nil
-}
-
-func (v *CallSiteValidator) visitContainer(callSite *ContainerCallSite, state validatorState) (reflect.Type, error) {
-	return nil, nil
 }
 
 func newCallSiteValidator() *CallSiteValidator {

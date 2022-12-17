@@ -15,6 +15,8 @@ const (
 	Lifetime_Transient
 )
 
+type Factory func(Container) any
+
 type ConstructorInfo struct {
 	FuncType  reflect.Type
 	FuncValue reflect.Value
@@ -45,6 +47,7 @@ type Descriptor struct {
 	Lifetime    Lifetime
 	Ctor        *ConstructorInfo
 	Instance    any
+	Factory     func(Container) any
 }
 
 func (d *Descriptor) String() string {
@@ -107,4 +110,12 @@ func instanceAssignable(instance any, to reflect.Type) (err error) {
 		err = fmt.Errorf("the instance of type '%v' can not assignable to type '%v'", t, to)
 	}
 	return
+}
+
+func NewFactoryDescriptor(serviceType reflect.Type, lifetime Lifetime, factory Factory) *Descriptor {
+	return &Descriptor{
+		ServiceType: serviceType,
+		Lifetime:    lifetime,
+		Factory:     factory,
+	}
 }
