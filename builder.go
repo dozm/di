@@ -12,6 +12,7 @@ type ContainerBuilder interface {
 	Add(...*Descriptor)
 	// Remove all the descriptors that the service type is t.
 	Remove(t reflect.Type)
+	Contains(t reflect.Type) bool
 	Build() Container
 	ConfigureOptions(func(*Options))
 }
@@ -39,6 +40,15 @@ func (b *containerBuilder) Remove(t reflect.Type) {
 		}
 	}
 	b.descriptors = descriptors[:j]
+}
+
+func (b *containerBuilder) Contains(t reflect.Type) bool {
+	for _, d := range b.descriptors {
+		if d.ServiceType == t {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *containerBuilder) builtInServices(c *container) {
