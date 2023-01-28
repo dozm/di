@@ -10,6 +10,8 @@ import (
 
 type ContainerBuilder interface {
 	Add(...*Descriptor)
+	// Remove all the descriptors that the service type is t.
+	Remove(t reflect.Type)
 	Build() Container
 	ConfigureOptions(func(*Options))
 }
@@ -25,6 +27,18 @@ func (b *containerBuilder) ConfigureOptions(f func(*Options)) {
 
 func (b *containerBuilder) Add(d ...*Descriptor) {
 	b.descriptors = append(b.descriptors, d...)
+}
+
+func (b *containerBuilder) Remove(t reflect.Type) {
+	descriptors := b.descriptors
+	j := 0
+	for _, d := range descriptors {
+		if d.ServiceType != t {
+			descriptors[j] = d
+			j++
+		}
+	}
+	b.descriptors = descriptors[:j]
 }
 
 func (b *containerBuilder) builtInServices(c *container) {
