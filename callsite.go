@@ -32,7 +32,6 @@ type CallSite interface {
 	Cache() ResultCache
 }
 
-//
 type ConstantCallSite struct {
 	serviceType reflect.Type
 	value       any
@@ -69,7 +68,7 @@ func newConstantCallSite(serviceType reflect.Type, defaultValue any) *ConstantCa
 	}
 }
 
-//Factory call site
+// Factory call site
 type FactoryCallSite struct {
 	serviceType reflect.Type
 	value       any
@@ -105,7 +104,6 @@ func newFactoryCallSite(cache ResultCache, serviceType reflect.Type, factory Fac
 	}
 }
 
-//
 type ConstructorCallSite struct {
 	serviceType reflect.Type
 	value       any
@@ -143,7 +141,6 @@ func newConstructorCallSite(cache ResultCache, serviceType reflect.Type, ctor *C
 	}
 }
 
-//
 type ContainerCallSite struct {
 	value any
 }
@@ -168,7 +165,6 @@ func (cs *ContainerCallSite) Cache() ResultCache {
 	return NoneResultCache
 }
 
-//
 type SliceCallSite struct {
 	serviceType reflect.Type
 	Elem        reflect.Type
@@ -206,7 +202,6 @@ func newSliceCallSite(cache ResultCache, elem reflect.Type, callSites []CallSite
 	}
 }
 
-//
 type chainItem struct {
 	Order int
 	Ctor  *ConstructorInfo
@@ -273,6 +268,11 @@ func (f *CallSiteFactory) populate() {
 		serviceType := descriptor.ServiceType
 		cacheItem := f.descriptorLookup[serviceType]
 		f.descriptorLookup[serviceType] = cacheItem.Add(descriptor)
+
+		for _, t := range descriptor.ImplementedInterfaceTypes {
+			cacheItem := f.descriptorLookup[t]
+			f.descriptorLookup[t] = cacheItem.Add(descriptor)
+		}
 	}
 }
 

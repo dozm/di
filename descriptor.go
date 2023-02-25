@@ -43,11 +43,12 @@ func newConstructorInfo(ctor any) *ConstructorInfo {
 
 // service descriptor
 type Descriptor struct {
-	ServiceType reflect.Type
-	Lifetime    Lifetime
-	Ctor        *ConstructorInfo
-	Instance    any
-	Factory     func(Container) any
+	ServiceType               reflect.Type
+	Lifetime                  Lifetime
+	Ctor                      *ConstructorInfo
+	Instance                  any
+	Factory                   func(Container) any
+	ImplementedInterfaceTypes []reflect.Type
 }
 
 func (d *Descriptor) String() string {
@@ -62,10 +63,42 @@ func (d *Descriptor) String() string {
 	return s
 }
 
-func NewInstanceDescriptor(serviceType reflect.Type, instance any) *Descriptor {
+// validateServiceType validates the service type.
+// panics if implementedInterfaceTypes is passed then the serviceType MUST be a struct.
+// panics if implementedInterfaceTypes must be interfaces and the serviceType must implement them.
+func validateServiceType(serviceType reflect.Type, implementedInterfaceTypes ...reflect.Type) {
+	if len(implementedInterfaceTypes) > 0 {
+		kind := serviceType.Kind()
+		// if serviceType is a pointer, get the element type
+		if kind != reflect.Ptr {
+			panic(fmt.Errorf("if implementedInterfaceTypes is passed then the serviceType MUST be a struct ptr.  i.e. *MyStruct"))
+		}
+		serviceTypeElem := serviceType.Elem()
+
+		if serviceTypeElem.Kind() != reflect.Struct {
+			panic(fmt.Errorf("if implementedInterfaceTypes is passed then the serviceType MUST be a struct ptr.  i.e. *MyStruct"))
+		}
+		for _, t := range implementedInterfaceTypes {
+			kind := t.Kind()
+			// if t is a pointer, get the element type
+			if kind != reflect.Ptr {
+				panic(fmt.Errorf("implementedInterfaceTypes must be interfaces. i.e. reflect.TypeOf((*ITime)(nil))"))
+			}
+			t = t.Elem()
+			if t.Kind() != reflect.Interface {
+				panic(fmt.Errorf("implementedInterfaceTypes must be interfaces. i.e. reflect.TypeOf((*ITime)(nil))"))
+			}
+			if !serviceType.Implements(t) {
+				panic(fmt.Errorf("the serviceType must implement the interface '%v'", t))
+			}
+		}
+	}
+}
+func NewInstanceDescriptor(serviceType reflect.Type, instance any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
 	if err := instanceAssignable(instance, serviceType); err != nil {
 		panic(err)
 	}
+	validateServiceType(serviceType, implementedInterfaceTypes...)
 
 	return &Descriptor{
 		ServiceType: serviceType,
@@ -74,7 +107,7 @@ func NewInstanceDescriptor(serviceType reflect.Type, instance any) *Descriptor {
 	}
 }
 
-func NewConstructorDescriptor(serviceType reflect.Type, lifetime Lifetime, ctor any) *Descriptor {
+func NewConstructorDescriptor(serviceType reflect.Type, lifetime Lifetime, ctor any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
 	ci := newConstructorInfo(ctor)
 	err := checkConstructor(ci, serviceType)
 
@@ -82,10 +115,16 @@ func NewConstructorDescriptor(serviceType reflect.Type, lifetime Lifetime, ctor 
 		panic(err)
 	}
 
+	validateServiceType(serviceType, implementedInterfaceTypes...)
+	var implementedInterfaceTypesElem []reflect.Type
+	for _, t := range implementedInterfaceTypes {
+		implementedInterfaceTypesElem = append(implementedInterfaceTypesElem, t.Elem())
+	}
 	return &Descriptor{
-		ServiceType: serviceType,
-		Lifetime:    lifetime,
-		Ctor:        ci,
+		ServiceType:               serviceType,
+		Lifetime:                  lifetime,
+		Ctor:                      ci,
+		ImplementedInterfaceTypes: implementedInterfaceTypesElem,
 	}
 }
 

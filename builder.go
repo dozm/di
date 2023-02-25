@@ -105,55 +105,55 @@ func Builder() ContainerBuilder {
 }
 
 // New a descriptor with instance
-func Instance[T any](instance any) *Descriptor {
+func Instance[T any](instance any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
 	return NewInstanceDescriptor(reflectx.TypeOf[T](), instance)
 }
 
 // New a transient constructor descriptor
-func Transient[T any](ctor any) *Descriptor {
-	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Transient, ctor)
+func Transient[T any](ctor any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
+	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Transient, ctor, implementedInterfaceTypes...)
 }
 
 // New a scoped constructor descriptor
-func Scoped[T any](ctor any) *Descriptor {
-	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Scoped, ctor)
+func Scoped[T any](ctor any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
+	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Scoped, ctor, implementedInterfaceTypes...)
 }
 
 // New a singleton constructor descriptor
-func Singleton[T any](ctor any) *Descriptor {
-	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Singleton, ctor)
+func Singleton[T any](ctor any, implementedInterfaceTypes ...reflect.Type) *Descriptor {
+	return NewConstructorDescriptor(reflectx.TypeOf[T](), Lifetime_Singleton, ctor, implementedInterfaceTypes...)
 }
 
 // Add a transient service descriptor to the ContainerBuilder.
 // T is the service type,
 // cb is the ContainerBuilder,
 // ctor is the constructor of the service T.
-func AddTransient[T any](cb ContainerBuilder, ctor any) {
-	cb.Add(Transient[T](ctor))
+func AddTransient[T any](cb ContainerBuilder, ctor any, implementedInterfaceTypes ...reflect.Type) {
+	cb.Add(Transient[T](ctor, implementedInterfaceTypes...))
 }
 
 // Add a scoped service descriptor to the ContainerBuilder.
 // T is the service type,
 // cb is the ContainerBuilder,
 // ctor is the constructor of the service T.
-func AddScoped[T any](cb ContainerBuilder, ctor any) {
-	cb.Add(Scoped[T](ctor))
+func AddScoped[T any](cb ContainerBuilder, ctor any, implementedInterfaceTypes ...reflect.Type) {
+	cb.Add(Scoped[T](ctor, implementedInterfaceTypes...))
 }
 
 // Add a singleton service descriptor to the ContainerBuilder.
 // T is the service type,
 // cb is the ContainerBuilder,
 // ctor is the constructor of the service T.
-func AddSingleton[T any](cb ContainerBuilder, ctor any) {
-	cb.Add(Singleton[T](ctor))
+func AddSingleton[T any](cb ContainerBuilder, ctor any, implementedInterfaceTypes ...reflect.Type) {
+	cb.Add(Singleton[T](ctor, implementedInterfaceTypes...))
 }
 
 // Add an instance service descriptor to the ContainerBuilder.
 // T is the service type,
 // cb is the ContainerBuilder,
 // the instance must be assignable to the service T.
-func AddInstance[T any](cb ContainerBuilder, instance any) {
-	cb.Add(Instance[T](instance))
+func AddInstance[T any](cb ContainerBuilder, instance any, implementedInterfaceTypes ...reflect.Type) {
+	cb.Add(Instance[T](instance, implementedInterfaceTypes...))
 }
 
 // New a transient factory descriptor
