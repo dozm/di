@@ -100,6 +100,60 @@ func (s *department) GetSecretName() string { return s.SecretName }
 func (s *company) GetName() string            { return s.Name }
 func (s *company) GetDepartment() IDepartment { return s.Department }
 
+type (
+	UniqueDepartment[TUnique any] struct {
+		Name       string
+		SecretName string
+		Time       ITime
+	}
+	DepartmentIT struct{}
+	DepartmentHR struct{}
+)
+
+func (d *UniqueDepartment[TUnique]) GetName() string {
+	return d.Name
+}
+
+func (s *UniqueDepartment[TUnique]) GetSecretName() string { return s.SecretName }
+func AddUniqueDepartment[TUnique any](b ContainerBuilder, name string) {
+	AddSingleton[*UniqueDepartment[TUnique]](b, func(tt ITime) *UniqueDepartment[TUnique] {
+		return &UniqueDepartment[TUnique]{
+			Name:       name,
+			Time:       tt,
+			SecretName: fmt.Sprintf("%s-FBI", name),
+		}
+	})
+	AddSingleton[IDepartment](b, func(d *UniqueDepartment[TUnique]) IDepartment {
+		return d
+	})
+	AddSingleton[IDepartment2](b, func(d *UniqueDepartment[TUnique]) IDepartment2 {
+		return d
+	})
+}
+func TestUniquenesWithMany(t *testing.T) {
+	b := Builder()
+	AddSingletonTime(b)
+	AddUniqueDepartment[DepartmentIT](b, "IT")
+	AddUniqueDepartment[DepartmentHR](b, "HR")
+	c := b.Build()
+	department := Get[IDepartment](c)
+	require.Equal(t, "HR", department.GetName())
+	department2 := Get[IDepartment2](c)
+	require.Equal(t, "HR", department2.GetName())
+	require.Equal(t, "HR-FBI", department2.GetSecretName())
+
+	departments := Get[[]IDepartment](c)
+	require.Equal(t, 2, len(departments))
+	require.Equal(t, "IT", departments[0].GetName())
+	require.Equal(t, "HR", departments[1].GetName())
+	department2s := Get[[]IDepartment2](c)
+	require.Equal(t, 2, len(department2s))
+	require.Equal(t, "IT", department2s[0].GetName())
+	require.Equal(t, "HR", department2s[1].GetName())
+	require.Equal(t, "IT-FBI", department2s[0].GetSecretName())
+	require.Equal(t, "HR-FBI", department2s[1].GetSecretName())
+
+}
 func TestSingletonOneInterface(t *testing.T) {
 	b := Builder()
 	// get the reflet.Type of the interface
