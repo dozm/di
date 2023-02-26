@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dozm/di/reflectx"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,8 +68,10 @@ func AddSingletonTime(b ContainerBuilder) {
 	})
 }
 func AddSingletonDepartments(b ContainerBuilder, names ...string) {
+	// pointer to interface type
 	typeIDepartment := reflect.TypeOf((*IDepartment)(nil))
-	typeIDepartment2 := reflect.TypeOf((*IDepartment2)(nil))
+	// elem of pointer to interface type
+	typeIDepartment2 := reflectx.TypeOf[IDepartment2]()
 
 	for idx := range names {
 		name := names[idx]

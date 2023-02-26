@@ -81,10 +81,9 @@ func validateServiceType(serviceType reflect.Type, implementedInterfaceTypes ...
 		for _, t := range implementedInterfaceTypes {
 			kind := t.Kind()
 			// if t is a pointer, get the element type
-			if kind != reflect.Ptr {
-				panic(fmt.Errorf("implementedInterfaceTypes must be interfaces. i.e. reflect.TypeOf((*ITime)(nil))"))
+			if kind == reflect.Ptr {
+				t = t.Elem()
 			}
-			t = t.Elem()
 			if t.Kind() != reflect.Interface {
 				panic(fmt.Errorf("implementedInterfaceTypes must be interfaces. i.e. reflect.TypeOf((*ITime)(nil))"))
 			}
@@ -118,7 +117,10 @@ func NewConstructorDescriptor(serviceType reflect.Type, lifetime Lifetime, ctor 
 	validateServiceType(serviceType, implementedInterfaceTypes...)
 	var implementedInterfaceTypesElem []reflect.Type
 	for _, t := range implementedInterfaceTypes {
-		implementedInterfaceTypesElem = append(implementedInterfaceTypesElem, t.Elem())
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		implementedInterfaceTypesElem = append(implementedInterfaceTypesElem, t)
 	}
 	return &Descriptor{
 		ServiceType:               serviceType,
