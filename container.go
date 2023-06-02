@@ -26,10 +26,12 @@ func DefaultOptions() Options {
 
 // Container implementation
 type container struct {
-	Root              *ContainerEngineScope
-	CallSiteFactory   *CallSiteFactory
-	engine            ContainerEngine
-	realizedServices  *syncx.Map[reflect.Type, ServiceAccessor]
+	Root                      *ContainerEngineScope
+	CallSiteFactory           *CallSiteFactory
+	engine                    ContainerEngine
+	realizedServices          *syncx.Map[reflect.Type, ServiceAccessor]
+	realizedLookupKeyServices *syncx.Map[string, ServiceAccessor]
+
 	disposed          bool
 	callSiteValidator *CallSiteValidator
 }
@@ -37,7 +39,9 @@ type container struct {
 func (c *container) Get(serviceType reflect.Type) (any, error) {
 	return c.GetWithScope(serviceType, c.Root)
 }
-
+func (c *container) GetByLookupKey(serviceType reflect.Type, key string) (any, error) {
+	return c.GetWithScopeWithLookupKey(serviceType, key, c.Root)
+}
 func (c *container) CreateScope() Scope {
 	if c.disposed {
 		panic(fmt.Errorf("%v disposed", reflect.TypeOf(c).Elem()))
@@ -82,7 +86,42 @@ func (c *container) GetWithScope(serviceType reflect.Type, scope *ContainerEngin
 
 	return accessor(scope)
 }
+func (c *container) GetWithScopeWithLookupKey(serviceType reflect.Type, key string, scope *ContainerEngineScope) (result any, err error) {
+	if c.disposed {
+		err = fmt.Errorf("%v disposed", reflect.TypeOf(c).Elem())
+		return
+	}
 
+	defer func() {
+		if p := recover(); p != nil {
+			if e, ok := p.(error); ok {
+				err = e
+			} else {
+				err = fmt.Errorf("%v", p)
+			}
+		}
+	}()
+	hashKey := hashTypeAndString(serviceType, key)
+	accessor, ok := c.realizedLookupKeyServices.Load(hashKey)
+	if !ok {
+		accessor, err = c.createServiceLookupKeyAccessor(hashKey)
+		if err != nil {
+			return
+		} else {
+			accessor, _ = c.realizedLookupKeyServices.LoadOrStore(hashKey, accessor)
+		}
+
+	}
+
+	if c.callSiteValidator != nil {
+		err := c.callSiteValidator.ValidateResolution(serviceType, scope, c.Root)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return accessor(scope)
+}
 func (c *container) validateService(d *Descriptor) error {
 	callSite, err := c.CallSiteFactory.GetCallSiteByDescriptor(d, newCallSiteChain())
 	if err != nil {
@@ -107,6 +146,29 @@ func (c *container) createEngine() ContainerEngine {
 	return newContainerEngine(c)
 }
 
+func (c *container) createServiceLookupKeyAccessor(key string) (ServiceAccessor, error) {
+	descriptor := c.CallSiteFactory.descriptorKeyLookup[key]
+	callSite, err := c.CallSiteFactory.GetCallSiteByDescriptor(descriptor.item, newCallSiteChain())
+	if err != nil {
+		return nil, err
+	}
+
+	if c.callSiteValidator != nil {
+		if err := c.callSiteValidator.ValidateCallSite(callSite); err != nil {
+			return nil, err
+		}
+	}
+
+	if callSite.Cache().Location == CacheLocation_Root {
+		value, err := CallSiteResolverInstance.Resolve(callSite, c.Root)
+		if err != nil {
+			return nil, err
+		}
+		return func(scope *ContainerEngineScope) (any, error) { return value, nil }, nil
+	}
+
+	return c.engine.RealizeService(callSite)
+}
 func (c *container) createServiceAccessor(serviceType reflect.Type) (ServiceAccessor, error) {
 	callSite, err := c.CallSiteFactory.GetCallSite(serviceType, newCallSiteChain())
 	if err != nil {

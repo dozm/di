@@ -11,6 +11,10 @@ import (
 )
 
 type (
+	IHandler interface {
+		GetPath() string
+	}
+
 	IDepartment interface {
 		GetName() string
 	}
@@ -24,6 +28,9 @@ type (
 	}
 	IEmployee interface {
 		GetName() string
+	}
+	handler struct {
+		path string
 	}
 	department struct {
 		Name       string
@@ -55,6 +62,7 @@ func (s *scopedName) SetName(name string) {
 func (s *scopedName) GetName() string {
 	return s.name
 }
+func (s *handler) GetPath() string { return s.path }
 func (s *myTime) Now() time.Time {
 	if !s.fixedTime.IsZero() {
 		return s.fixedTime
@@ -67,6 +75,19 @@ func AddSingletonTime(b ContainerBuilder) {
 		return &myTime{}
 	})
 }
+func AddScopedHandlers(b ContainerBuilder) {
+	AddScopedWithLookupKeys[*handler](b,
+		func() *handler {
+			return &handler{path: "1"}
+		}, []string{"1"},
+		reflect.TypeOf((*IHandler)(nil)))
+	AddScopedWithLookupKeys[*handler](b,
+		func() *handler {
+			return &handler{path: "2"}
+		}, []string{"2"},
+		reflect.TypeOf((*IHandler)(nil)))
+}
+
 func AddSingletonDepartments(b ContainerBuilder, names ...string) {
 	// pointer to interface type
 	typeIDepartment := reflect.TypeOf((*IDepartment)(nil))
@@ -242,7 +263,21 @@ func TestSingleton(t *testing.T) {
 	require.Equal(t, "IT", company.GetDepartment().GetName())
 	require.Equal(t, "Contoso", company.GetName())
 }
-
+func TestManyWithScopeWithLookupKeys(t *testing.T) {
+	b := Builder()
+	// Build the container
+	AddScopedHandlers(b)
+	c := b.Build()
+	scopeFactory := Get[ScopeFactory](c)
+	scope1 := scopeFactory.CreateScope()
+	handlers := Get[[]IHandler](scope1.Container())
+	require.Equal(t, 2, len(handlers))
+	require.NotPanics(t, func() {
+		h := GetByLookupKey[IHandler](c, "1")
+		require.NotNil(t, h)
+		require.Equal(t, "1", h.GetPath())
+	})
+}
 func TestManyWithScope(t *testing.T) {
 	b := Builder()
 	AddSingletonTime(b)

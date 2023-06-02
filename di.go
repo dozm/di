@@ -10,6 +10,7 @@ import (
 
 type Container interface {
 	Get(reflect.Type) (any, error)
+	GetByLookupKey(reflect.Type, string) (any, error)
 }
 
 type Scope interface {
@@ -39,6 +40,29 @@ func Get[T any](c Container) T {
 	return result
 }
 
+// Get service of the type T from the container c
+func GetByLookupKey[T any](c Container, key string) T {
+	result, err := TryGetByLookupKey[T](c, key)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+func TryGetByLookupKey[T any](c Container, key string) (result T, err error) {
+	t := reflectx.TypeOf[T]()
+	v, err := c.GetByLookupKey(t, key)
+	if err != nil {
+		return
+	}
+
+	result, ok := v.(T)
+	if !ok {
+		err = &errorx.TypeIncompatibilityError{To: t, From: reflect.TypeOf(v)}
+		return
+	}
+
+	return
+}
 func TryGet[T any](c Container) (result T, err error) {
 	t := reflectx.TypeOf[T]()
 	v, err := c.Get(t)

@@ -9,7 +9,6 @@ import (
 	"github.com/dozm/di/reflectx"
 )
 
-//
 type ContainerEngineScope struct {
 	RootContainer    *container
 	IsRootScope      bool
@@ -25,6 +24,13 @@ func (s *ContainerEngineScope) Get(serviceType reflect.Type) (any, error) {
 	}
 
 	return s.RootContainer.GetWithScope(serviceType, s)
+}
+func (s *ContainerEngineScope) GetByLookupKey(serviceType reflect.Type, key string) (any, error) {
+	if s.disposed {
+		return nil, &errorx.ObjectDisposedError{Message: reflectx.TypeOf[Container]().String()}
+	}
+
+	return s.RootContainer.GetWithScopeWithLookupKey(serviceType, key, s)
 }
 
 func (s *ContainerEngineScope) Container() Container {

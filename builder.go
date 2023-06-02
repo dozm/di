@@ -70,8 +70,9 @@ func (b *containerBuilder) Build() Container {
 	b.configureOptions(&options)
 
 	c := &container{
-		CallSiteFactory:  newCallSiteFactory(b.descriptors),
-		realizedServices: syncx.NewMap[reflect.Type, ServiceAccessor](),
+		CallSiteFactory:           newCallSiteFactory(b.descriptors),
+		realizedServices:          syncx.NewMap[reflect.Type, ServiceAccessor](),
+		realizedLookupKeyServices: syncx.NewMap[string, ServiceAccessor](),
 	}
 
 	c.Root = newEngineScope(c, true)
@@ -136,8 +137,32 @@ func AddTransient[T any](cb ContainerBuilder, ctor any, implementedInterfaceType
 // T is the service type,
 // cb is the ContainerBuilder,
 // ctor is the constructor of the service T.
+// implementedInterfaceTypes is the implemented interface types of the service T.
 func AddScoped[T any](cb ContainerBuilder, ctor any, implementedInterfaceTypes ...reflect.Type) {
 	cb.Add(Scoped[T](ctor, implementedInterfaceTypes...))
+}
+
+// Add a scoped service descriptor to the ContainerBuilder.
+// T is the service type,
+// cb is the ContainerBuilder,
+// ctor is the constructor of the service T.
+// lookupKeys is the lookup keys of the service T.
+// implementedInterfaceTypes is the implemented interface types of the service T.
+func AddScopedWithLookupKeys[T any](cb ContainerBuilder,
+	ctor any,
+	lookupKeys []string,
+	implementedInterfaceTypes ...reflect.Type) {
+	descriptor := Scoped[T](ctor, implementedInterfaceTypes...)
+
+	for _, key := range lookupKeys {
+		hKey := hashTypeAndString(descriptor.ServiceType, key)
+		descriptor.LookupKeys = append(descriptor.LookupKeys, hKey)
+		for _, t := range implementedInterfaceTypes {
+			hKey = hashTypeAndString(t, key)
+			descriptor.LookupKeys = append(descriptor.LookupKeys, hKey)
+		}
+	}
+	cb.Add(descriptor)
 }
 
 // Add a singleton service descriptor to the ContainerBuilder.

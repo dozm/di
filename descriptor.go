@@ -49,6 +49,7 @@ type Descriptor struct {
 	Instance                  any
 	Factory                   func(Container) any
 	ImplementedInterfaceTypes []reflect.Type
+	LookupKeys                []string
 }
 
 func (d *Descriptor) String() string {
@@ -159,4 +160,11 @@ func NewFactoryDescriptor(serviceType reflect.Type, lifetime Lifetime, factory F
 		Lifetime:    lifetime,
 		Factory:     factory,
 	}
+}
+
+func hashTypeAndString(t reflect.Type, s string) string {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return fmt.Sprintf("%s-%s", t.Name(), s)
 }

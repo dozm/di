@@ -253,10 +253,12 @@ func newCallSiteChain() *callSiteChain {
 const DefaultSlot int = 0
 
 type CallSiteFactory struct {
-	descriptors      []*Descriptor
-	callSiteCache    *syncx.Map[ServiceCacheKey, CallSite]
-	descriptorLookup map[reflect.Type]descriptorCacheItem
-	callSiteLockers  *syncx.LockMap
+	descriptors         []*Descriptor
+	callSiteCache       *syncx.Map[ServiceCacheKey, CallSite]
+	descriptorLookup    map[reflect.Type]descriptorCacheItem
+	descriptorKeyLookup map[string]descriptorCacheItem
+
+	callSiteLockers *syncx.LockMap
 }
 
 func (f *CallSiteFactory) Descriptors() []*Descriptor {
@@ -273,6 +275,10 @@ func (f *CallSiteFactory) populate() {
 			cacheItem := f.descriptorLookup[t]
 			f.descriptorLookup[t] = cacheItem.Add(descriptor)
 		}
+		for _, t := range descriptor.LookupKeys {
+			cacheItem := f.descriptorKeyLookup[t]
+			f.descriptorKeyLookup[t] = cacheItem.Add(descriptor)
+		}
 	}
 }
 
@@ -280,7 +286,6 @@ func (f *CallSiteFactory) GetCallSite(serviceType reflect.Type, chain *callSiteC
 	if site, ok := f.callSiteCache.Load(ServiceCacheKey{ServiceType: serviceType, Slot: DefaultSlot}); ok {
 		return site, nil
 	}
-
 	return f.createCallSite(serviceType, chain)
 }
 
@@ -445,10 +450,11 @@ func newCallSiteFactory(descriptors []*Descriptor) *CallSiteFactory {
 	copy(d, descriptors)
 
 	f := &CallSiteFactory{
-		descriptors:      d,
-		callSiteCache:    syncx.NewMap[ServiceCacheKey, CallSite](),
-		descriptorLookup: make(map[reflect.Type]descriptorCacheItem),
-		callSiteLockers:  &syncx.LockMap{},
+		descriptors:         d,
+		callSiteCache:       syncx.NewMap[ServiceCacheKey, CallSite](),
+		descriptorLookup:    make(map[reflect.Type]descriptorCacheItem),
+		descriptorKeyLookup: make(map[string]descriptorCacheItem),
+		callSiteLockers:     &syncx.LockMap{},
 	}
 
 	f.populate()
