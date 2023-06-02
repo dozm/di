@@ -99,11 +99,18 @@ func NewInstanceDescriptor(serviceType reflect.Type, instance any, implementedIn
 		panic(err)
 	}
 	validateServiceType(serviceType, implementedInterfaceTypes...)
-
+	var implementedInterfaceTypesElem []reflect.Type
+	for _, t := range implementedInterfaceTypes {
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		implementedInterfaceTypesElem = append(implementedInterfaceTypesElem, t)
+	}
 	return &Descriptor{
-		ServiceType: serviceType,
-		Lifetime:    Lifetime_Singleton,
-		Instance:    instance,
+		ServiceType:               serviceType,
+		Lifetime:                  Lifetime_Singleton,
+		Instance:                  instance,
+		ImplementedInterfaceTypes: implementedInterfaceTypesElem,
 	}
 }
 

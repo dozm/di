@@ -29,6 +29,9 @@ type (
 	IEmployee interface {
 		GetName() string
 	}
+	employee struct {
+		Name string
+	}
 	handler struct {
 		path string
 	}
@@ -62,6 +65,8 @@ func (s *scopedName) SetName(name string) {
 func (s *scopedName) GetName() string {
 	return s.name
 }
+func (s *employee) GetName() string { return s.Name }
+
 func (s *handler) GetPath() string { return s.path }
 func (s *myTime) Now() time.Time {
 	if !s.fixedTime.IsZero() {
@@ -75,7 +80,39 @@ func AddSingletonTime(b ContainerBuilder) {
 		return &myTime{}
 	})
 }
-func AddScopedHandlers(b ContainerBuilder) {
+func AddSingletonEmployeesWithLookupKeys(b ContainerBuilder) {
+	AddSingletonWithLookupKeys[*employee](b,
+		func() *employee {
+			return &employee{Name: "1"}
+		}, []string{"1"},
+		reflect.TypeOf((*IEmployee)(nil)))
+	AddSingletonWithLookupKeys[*employee](b,
+		func() *employee {
+			return &employee{Name: "2"}
+		}, []string{"2"},
+		reflect.TypeOf((*IEmployee)(nil)))
+}
+func AddTransientEmployeesWithLookupKeys(b ContainerBuilder) {
+	AddTransientWithLookupKeys[*employee](b,
+		func() *employee {
+			return &employee{Name: "1"}
+		}, []string{"1"},
+		reflect.TypeOf((*IEmployee)(nil)))
+	AddTransientWithLookupKeys[*employee](b,
+		func() *employee {
+			return &employee{Name: "2"}
+		}, []string{"2"},
+		reflect.TypeOf((*IEmployee)(nil)))
+}
+func AddInstanceEmployeesWithLookupKeys(b ContainerBuilder) {
+	AddInstanceWithLookupKeys[*employee](b,
+		&employee{Name: "1"}, []string{"1"},
+		reflect.TypeOf((*IEmployee)(nil)))
+	AddInstanceWithLookupKeys[*employee](b,
+		&employee{Name: "2"}, []string{"2"},
+		reflect.TypeOf((*IEmployee)(nil)))
+}
+func AddScopedHandlersWithLookupKeys(b ContainerBuilder) {
 	AddScopedWithLookupKeys[*handler](b,
 		func() *handler {
 			return &handler{path: "1"}
@@ -266,7 +303,7 @@ func TestSingleton(t *testing.T) {
 func TestManyWithScopeWithLookupKeys(t *testing.T) {
 	b := Builder()
 	// Build the container
-	AddScopedHandlers(b)
+	AddScopedHandlersWithLookupKeys(b)
 	c := b.Build()
 	scopeFactory := Get[ScopeFactory](c)
 	scope1 := scopeFactory.CreateScope()
@@ -276,6 +313,59 @@ func TestManyWithScopeWithLookupKeys(t *testing.T) {
 		h := GetByLookupKey[IHandler](c, "1")
 		require.NotNil(t, h)
 		require.Equal(t, "1", h.GetPath())
+	})
+}
+
+func TestManyWithSingletonWithLookupKeys(t *testing.T) {
+	b := Builder()
+	// Build the container
+	AddSingletonEmployeesWithLookupKeys(b)
+	c := b.Build()
+	scopeFactory := Get[ScopeFactory](c)
+	scope1 := scopeFactory.CreateScope()
+	employees := Get[[]IEmployee](scope1.Container())
+	require.Equal(t, 2, len(employees))
+	require.NotPanics(t, func() {
+		h := GetByLookupKey[IEmployee](c, "1")
+		require.NotNil(t, h)
+		require.Equal(t, "1", h.GetName())
+	})
+}
+func TestManyWithTransientWithLookupKeys(t *testing.T) {
+	b := Builder()
+	// Build the container
+	AddTransientEmployeesWithLookupKeys(b)
+	c := b.Build()
+	scopeFactory := Get[ScopeFactory](c)
+	scope1 := scopeFactory.CreateScope()
+	employees := Get[[]IEmployee](scope1.Container())
+	require.Equal(t, 2, len(employees))
+	require.NotPanics(t, func() {
+		h := GetByLookupKey[IEmployee](c, "1")
+		require.NotNil(t, h)
+		require.Equal(t, "1", h.GetName())
+	})
+}
+func TestManyWithInstanceWithLookupKeys(t *testing.T) {
+	b := Builder()
+	// Build the container
+	AddInstanceEmployeesWithLookupKeys(b)
+	c := b.Build()
+	scopeFactory := Get[ScopeFactory](c)
+	scope1 := scopeFactory.CreateScope()
+	employees := Get[[]IEmployee](scope1.Container())
+	require.Equal(t, 2, len(employees))
+	require.NotPanics(t, func() {
+		h := GetByLookupKey[IEmployee](c, "1")
+		require.NotNil(t, h)
+		require.Equal(t, "1", h.GetName())
+	})
+	employeePtrs := Get[[]*employee](scope1.Container())
+	require.Equal(t, 2, len(employeePtrs))
+	require.NotPanics(t, func() {
+		h := GetByLookupKey[*employee](c, "1")
+		require.NotNil(t, h)
+		require.Equal(t, "1", h.GetName())
 	})
 }
 func TestManyWithScope(t *testing.T) {
